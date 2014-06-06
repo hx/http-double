@@ -1,6 +1,7 @@
 require 'rack/utils'
 require 'ostruct'
 require 'active_support/hash_with_indifferent_access'
+require 'forwardable'
 
 class HttpDouble::RequestLogger
 
@@ -24,12 +25,16 @@ class HttpDouble::RequestLogger
   end
 
   class Request
+    extend Forwardable
 
-    attr_reader :env, :body
+    attr_reader :env
 
     def initialize(env)
       @env = env
-      @body = env['rack.input'].read
+    end
+
+    def body
+      @body ||= rack_input.rewind && rack_input.read
     end
 
     def verb
@@ -41,20 +46,33 @@ class HttpDouble::RequestLogger
     end
 
     def [](field, index = nil)
-      case env['CONTENT_TYPE']
-        when 'application/x-www-form-urlencoded'
-          result = form_fields[field]
-          result = result[index] if result and index
-          result
-        else
-          raise "The content type '#{env['CONTENT_TYPE']}' doesn't support indexed access"
-      end
+      result = parsed_input[field]
+      result = result[index] if result and index
+      result
     end
+
+    delegate %i[first last map each size count length] => :parsed_input
 
     private
 
+    def parsed_input
+      @parsed_input ||= case env['CONTENT_TYPE']
+        when 'application/x-www-form-urlencoded' then form_fields
+        when 'application/json', 'application/x-json' then json_input
+        else raise "The content type '#{env['CONTENT_TYPE']}' doesn't support indexed access"
+      end
+    end
+
+    def rack_input
+      @rack_input ||= env['rack.input']
+    end
+
     def form_fields
       @form_fields ||= IHash.new(Rack::Utils.parse_query(body).map { |key, value| [key.to_sym, value.is_a?(Array) ? value : [value]] }.to_h)
+    end
+
+    def json_input
+      @json_input ||= JSON.parse body, quirks_mode: true
     end
 
   end

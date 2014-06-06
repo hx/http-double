@@ -6,7 +6,7 @@ class TestDouble < HttpDouble::Base
     [200, {foo: 'bar'}, 'testing 123']
   end
   post '/echo' do
-    [200, {}, JSON.generate(params)]
+    [200, {}, request.body.read]
   end
 end
 
@@ -67,12 +67,53 @@ describe HttpDouble do
   describe 'form data' do
 
     before :each do
-      @response = http.post '/echo', 'a=1&a=2&b=3', 'Content-Type' => 'application/x-www-form-urlencoded'
+      http.post '/echo', 'a=1&a=2&b=3', 'Content-Type' => 'application/x-www-form-urlencoded'
     end
 
     it 'should allow array access to request data' do
       expect(log.first.request['a']).to eq %w[1 2]
       expect(log.first.request[:b]).to eq %w[3]
+    end
+
+  end
+
+  describe 'JSON' do
+
+    subject { log.first.request }
+
+    describe 'hashes' do
+
+      before :each do
+        http.post '/echo', JSON.generate(a:1, b: [2, 3], c: :c, d: {e: :f}), 'Content-Type' => 'application/json'
+      end
+
+      it 'should allow array access to request data' do
+        expect(subject['a']).to be 1
+        expect(subject['b']).to eq [2, 3]
+        expect(subject['c']).to eq 'c'
+        expect(subject['d']).to eq('e' => 'f')
+      end
+
+    end
+
+    describe 'arrays' do
+
+      before :each do
+        http.post '/echo', JSON.generate([1, 'a', [4, 5, 6]]), 'Content-Type' => 'application/json'
+      end
+
+      it 'should allow array access to request data' do
+        expect(subject[0]).to be 1
+        expect(subject[1]).to eq 'a'
+        expect(subject[2]).to eq [4, 5, 6]
+      end
+
+      it 'should provide array methods' do
+        expect(subject.first).to be 1
+        expect(subject.last).to eq [4, 5, 6]
+        expect(subject.size).to be 3
+      end
+
     end
 
   end
