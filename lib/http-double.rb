@@ -5,7 +5,7 @@ require 'forwardable'
 module HttpDouble
   class << self
     extend Forwardable
-    delegate [:background, :log] => :Base
+    delegate %i[background foreground log] => :Base
   end
 end
 
