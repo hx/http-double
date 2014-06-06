@@ -16,6 +16,12 @@ Gem::Specification.new do |spec|
   spec.files         = Dir['lib/**/*', 'README*', 'LICENSE*'] & `git ls-files -z`.split("\x0")
   spec.require_paths = ['lib']
 
+  spec.add_dependency 'sinatra', '~> 1.4'
+  spec.add_dependency 'rack',    '~> 1.5'
+  spec.add_dependency 'thin',    '~> 1.6'
+  spec.add_dependency 'activesupport', '~> 4.1'
+
   spec.add_development_dependency 'bundler', '~> 1.6'
   spec.add_development_dependency 'rake', '>= 10.1'
+  spec.add_development_dependency 'rspec', '3.0.0.beta2'
 end
