@@ -1,7 +1,9 @@
 require 'sinatra/base'
+require 'sinatra/namespace'
 
 module HttpDouble
   class Base < Sinatra::Base
+    register Sinatra::Namespace
 
     class << self
 
