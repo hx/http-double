@@ -18,3 +18,16 @@ module Thin::Logging
     end
   end
 end
+
+# This patch tries to ensure Thin is using the correct logger in cases where multiple
+# doubles are running. This method is not foolproof.
+
+class Thin::Connection
+  alias_method :receive_data_original, :receive_data
+
+  def receive_data(data)
+    logger = HttpDouble::Base.loggers[backend.port]
+    Thin::Logging.trace_logger = logger if logger.respond_to? :level
+    receive_data_original data
+  end
+end
