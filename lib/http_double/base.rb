@@ -22,9 +22,10 @@ module HttpDouble
 
       end
 
-      def background(*args)
-        thread = Thread.new{ foreground *args }
+      def background(addr, port, **args)
+        thread = Thread.new{ foreground addr, port, **args }
         thread.abort_on_exception = true
+        sleep 0.05 until test_background addr, port
         thread
       end
 
@@ -34,6 +35,20 @@ module HttpDouble
 
       def loggers
         @loggers ||= {}
+      end
+
+      private
+
+      def test_background(addr, port)
+        begin
+          http = Net::HTTP.new addr, port
+          http.head '/'
+          true
+        rescue SystemCallError
+          false
+        rescue
+          true
+        end
       end
 
     end
