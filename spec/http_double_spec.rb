@@ -1,6 +1,21 @@
 require 'net/http'
 require 'json'
 
+class TestMiddleware
+  @calls = 0
+  class << self
+    attr_accessor :calls, :arg
+  end
+  def initialize(app, arg)
+    @app = app
+    self.class.arg = arg
+  end
+  def call(env)
+    self.class.calls += 1
+    @app.call env
+  end
+end
+
 class TestDouble < HttpDouble::Base
   get '/test' do
     [200, {foo: 'bar'}, 'testing 123']
@@ -10,6 +25,7 @@ class TestDouble < HttpDouble::Base
   end
 end
 
+TestDouble.use TestMiddleware, 'dont argue'
 TestDouble.background '127.0.0.1', 27409, log_path: File.expand_path('../../log/test.log', __FILE__)
 
 describe HttpDouble do
@@ -60,6 +76,18 @@ describe HttpDouble do
         expect(subject.body).to eq 'testing 123'
       end
 
+    end
+
+  end
+
+  describe 'middleware' do
+
+    it 'should be used' do
+      expect { http.get '/test' }.to change { TestMiddleware.calls }.by 1
+    end
+
+    it 'should take arguments' do
+      expect(TestMiddleware.arg).to eq 'dont argue'
     end
 
   end
