@@ -1,7 +1,6 @@
 require 'rack/utils'
 require 'ostruct'
 require 'active_support/hash_with_indifferent_access'
-require 'forwardable'
 
 class HttpDouble::RequestLogger
 
@@ -25,7 +24,6 @@ class HttpDouble::RequestLogger
   end
 
   class Request
-    extend Forwardable
 
     attr_reader :env
 
@@ -51,7 +49,13 @@ class HttpDouble::RequestLogger
       result
     end
 
-    delegate %i[first last map each size count length] => :parsed_input
+    def method_missing(sym, *args, &block)
+      parsed_input.__send__ sym, *args, &block
+    end
+
+    def respond_to_missing?(sym)
+      parsed_input.respond_to? sym
+    end
 
     private
 
