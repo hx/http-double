@@ -7,8 +7,9 @@ module HttpDouble
 
     class << self
 
-      def use_app(klass)
+      def use_app(klass, &block)
         @app_class = klass
+        @initializer = block
       end
 
       def foreground(addr, port, log_path: '/dev/null', logger: nil)
@@ -20,9 +21,12 @@ module HttpDouble
         log_stream = File.open(log_path, 'a')
         Base.loggers[port] = logger || Logger.new(log_stream)
 
+        initializer = @initializer
+
         Thin::Server.start(addr, port) do
+          initializer.call if initializer
           use RequestLogger, server_class.log
-          run app_class
+          run Class === app_class ? app_class.new : app_class
         end
 
       end
