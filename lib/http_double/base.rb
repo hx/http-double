@@ -12,7 +12,7 @@ module HttpDouble
         @initializer = block
       end
 
-      def foreground(addr, port, log_path: '/dev/null', logger: nil)
+      def foreground(addr, port, log_path: '/dev/null', logger: nil, &block)
         server_class = self
         app_class = @app_class || server_class
 
@@ -26,13 +26,14 @@ module HttpDouble
         Thin::Server.start(addr, port) do
           initializer.call if initializer
           use RequestLogger, server_class.log
+          instance_exec &block if block
           run Class === app_class ? app_class.new : app_class
         end
 
       end
 
-      def background(addr, port, **args)
-        thread = Thread.new{ foreground addr, port, **args }
+      def background(addr, port, **args, &block)
+        thread = Thread.new{ foreground addr, port, **args, &block }
         thread.abort_on_exception = true
         sleep 0.05 until test_background addr, port
         thread
