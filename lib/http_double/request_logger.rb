@@ -1,11 +1,8 @@
 require 'rack/utils'
-require 'ostruct'
 require 'active_support/hash_with_indifferent_access'
 
 class HttpDouble::RequestLogger
-
-  # noinspection RubyConstantNamingConvention
-  IHash = ActiveSupport::HashWithIndifferentAccess
+  include ActiveSupport
 
   def initialize(app, log)
     @app = app
@@ -13,14 +10,35 @@ class HttpDouble::RequestLogger
   end
 
   def call(env)
-    response = @app.call(env)
-    res = OpenStruct.new(
-        code:    response[0],
-        headers: IHash.new(response[1]),
-        body:    response[2].join
-    )
-    @log << OpenStruct.new(request: Request.new(env), response: res)
-    response
+    @app.call(env).tap do |response|
+      @log << RoundTrip.new(
+          Request.new(env),
+          Response.new(
+              response[0],
+              HashWithIndifferentAccess.new(response[1]),
+              response[2].join
+          )
+      )
+    end
+  end
+
+  class RoundTrip
+    attr_reader :request, :response
+
+    def initialize(request, response)
+      @request  = request
+      @response = response
+    end
+  end
+
+  class Response
+    attr_reader :code, :headers, :body
+
+    def initialize(code, headers, body)
+      @code    = code
+      @headers = headers
+      @body    = body
+    end
   end
 
   class Request
@@ -72,7 +90,11 @@ class HttpDouble::RequestLogger
     end
 
     def form_fields
-      @form_fields ||= IHash.new(Rack::Utils.parse_query(body).map { |key, value| [key.to_sym, value.is_a?(Array) ? value : [value]] }.to_h)
+      @form_fields ||= HashWithIndifferentAccess.new(
+          Rack::Utils.parse_query(body).map do |key, value|
+            [key.to_sym, value.is_a?(Array) ? value : [value]]
+          end.to_h
+      )
     end
 
     def json_input
