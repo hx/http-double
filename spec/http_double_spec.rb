@@ -21,7 +21,10 @@ class TestDouble < HttpDouble::Base
     [200, {foo: 'bar'}, 'testing 123']
   end
   post '/echo' do
-    [200, {}, request.body.read]
+    [200, {}, [request.body.read]]
+  end
+  get '/silent' do
+    [200, {'Suppress-Logging' => '1'}, ['do not log this']]
   end
 end
 
@@ -34,6 +37,16 @@ describe HttpDouble do
   let(:log) { TestDouble.log }
 
   before { log.clear }
+
+  describe 'log suppression' do
+
+    before { http.get '/silent' }
+
+    it 'should respond to the DO_NOT_LOG header' do
+      expect(log).to be_empty
+    end
+
+  end
 
   describe 'basic requests' do
 

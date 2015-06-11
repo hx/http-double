@@ -11,6 +11,7 @@ class HttpDouble::RequestLogger
 
   def call(env)
     @app.call(env).tap do |response|
+      next if response[1].has_key? 'suppress-logging'
       @log << RoundTrip.new(
           Request.new(env),
           Response.new(
