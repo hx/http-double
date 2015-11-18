@@ -1,8 +1,6 @@
 require 'rack/utils'
-require 'active_support/hash_with_indifferent_access'
 
 class HttpDouble::RequestLogger
-  include ActiveSupport
 
   def initialize(app, log)
     @app = app
@@ -100,6 +98,22 @@ class HttpDouble::RequestLogger
 
     def json_input
       @json_input ||= JSON.parse body, quirks_mode: true
+    end
+
+  end
+
+  class HashWithIndifferentAccess < Hash
+
+    def initialize(other_hash = {})
+      merge! other_hash
+    end
+
+    def merge!(other_hash)
+      other_hash.each { |k, v| self[k] = v }
+    end
+
+    %i([] []= key? fetch delete).each do |method|
+      define_method(method) { |key, *args, &block| super key.to_s, *args, &block }
     end
 
   end
